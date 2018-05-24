@@ -22,18 +22,14 @@ bool isSlave(int rank){
 }
 
 bool matrizesNaoMultiplicaveis(){
-  return MATRIX_ONE_LINES_LENGTH == MATRIX_TWO_COLUMNS_LENGTH;
+  return MATRIX_ONE_LINES_LENGTH != MATRIX_TWO_COLUMNS_LENGTH;
 }
 
 void generateNewMatrixFile(){
+  printf("Generating new matrix file\n");
   FILE *fileONE, *fileTWO;
   fileONE = fopen("fileone.bin", "wb+");
   fileTWO = fopen("filetwo.bin", "wb+");
-
-  // int matrix_one_lines = MATRIX_ONE_LINES_LENGTH;
-  // int matrix_one_cols = MATRIX_ONE_LINES_LENGTH;
-  // int matrix_two_lines = MATRIX_TWO_LINES_LENGTH;
-  // int matrix_two_cols = MATRIX_TWO_LINES_LENGTH;
 
   int i, j;
   for(i = 0; i < MATRIX_ONE_LINES_LENGTH; i++){
@@ -68,13 +64,16 @@ int main(int argc, char *argv[])
       return aborta("Erro! número ímpar de tarefas.\n");
     }   
 
-    if(matrizesNaoMultiplicaveis()) return aborta("Matrizes não são multiplicáveis!");
+    if(matrizesNaoMultiplicaveis()) return aborta("Matrizes não são multiplicáveis!\n");
 
     if (isMaster(comm_rank)){
       printf("Comm size = %d\n", comm_size);
-      if (argc == 2 && *argv[1] == 'g') generateNewMatrixFile();
-      else if(argc > 2) return aborta("Apenas um parametro esperado!");
+      int i;
+      for(i=1; i < argc; i++)
+       if (*argv[i] == 'g') generateNewMatrixFile();
     }
+
+    
 
   	//if (isSlave(comm_rank))
   	    //MPI_Recv(&data_recebida, particao, MPI_FLOAT, 0, 15, MPI_COMM_WORLD, &mpi_status);
