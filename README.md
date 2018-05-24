@@ -13,8 +13,6 @@
     make all
     make install
     
-    Após isso adicione essa linha ao seu .bashrc:
+    Após isso adicione essa linha ao seu .bashrc e reinicie seu terminal:
+    
     export PATH=$PATH:$HOME/openmpi/bin
-    
-    Reinicie seu terminal
-    
