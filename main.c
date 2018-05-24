@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include "mpi.h"
 
 #define MATRIX_ONE_LINES_LENGTH 100
@@ -6,24 +7,28 @@
 #define MATRIX_TWO_LINES_LENGTH 100
 #define MATRIX_TWO_COLUMNS_LENGTH 100
 
-void abort(char[] error_msg){
+int aborta(char *error_msg){
     printf("%s", error_msg);
     MPI_Abort (MPI_COMM_WORLD, 1);
     return 1;
 }
 
-int isMaster(int rank){
-    return rank == 0 ? 1 : NULL;
+bool isMaster(int rank){
+    return rank == 0 ? true : false;
 }
 
-int isSlave(int rank){
-  return isMaster(rank) == 1 ? NULL : 1;
+bool isSlave(int rank){
+  return !isMaster(rank);
+}
+
+bool matrizesNaoMultiplicaveis(){
+  return MATRIX_ONE_LINES_LENGTH == MATRIX_TWO_COLUMNS_LENGTH;
 }
 
 void generateNewMatrixFile(){
   FILE *fileONE, *fileTWO;
-  fileONE = FILE *fopen('fileone.bin', 'wb+');
-  fileTWO = FILE *fopen('filetwo.bin', 'wb+');
+  fileONE = fopen("fileone.bin", "wb+");
+  fileTWO = fopen("filetwo.bin", "wb+");
 
   // int matrix_one_lines = MATRIX_ONE_LINES_LENGTH;
   // int matrix_one_cols = MATRIX_ONE_LINES_LENGTH;
@@ -58,14 +63,17 @@ int main(int argc, char *argv[])
   	MPI_Request isreq, irreq;
   	MPI_Status mpi_status;
 
-    if(comm_size % 2 != 0) abort("Erro! número ímpar de tarefas.\n");
+    if(comm_size % 2 != 0){
+      printf("%d\n", comm_size);
+      return aborta("Erro! número ímpar de tarefas.\n");
+    }   
 
-    if(matrizesNaoMultiplicaveis()) abort("Matrizes não são multiplicáveis!");
+    if(matrizesNaoMultiplicaveis()) return aborta("Matrizes não são multiplicáveis!");
 
     if (isMaster(comm_rank)){
       printf("Comm size = %d\n", comm_size);
-      if (argc == 2 && argv[1] == 'g') generateNewMatrixFile();
-      else if(argc > 2) abort("Apenas um parametro esperado!");
+      if (argc == 2 && *argv[1] == 'g') generateNewMatrixFile();
+      else if(argc > 2) return aborta("Apenas um parametro esperado!");
     }
 
   	//if (isSlave(comm_rank))
