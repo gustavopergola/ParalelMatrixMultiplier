@@ -1,7 +1,8 @@
 # Multiplicação Matrizes MPI
 
 ## Como utilizar
-  Use o parametro 'g' para gerar uma nova matriz.
+  Use o parametro **'g'** para gerar uma nova matriz.<br/>
+  Use o parametro **'g+'** para gerar novas matrizes com conteúdo randômico.
 
 ## Como instalar MPI
     mkdir openmpi
