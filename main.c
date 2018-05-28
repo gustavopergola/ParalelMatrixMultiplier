@@ -5,10 +5,10 @@
 #include <string.h>
 #include "mpi.h"
 
-#define MATRIX_ONE_LINES_LENGTH 10
-#define MATRIX_ONE_COLUMNS_LENGTH 10
-#define MATRIX_TWO_LINES_LENGTH 10
-#define MATRIX_TWO_COLUMNS_LENGTH 10
+#define MATRIX_ONE_LINES_LENGTH 4
+#define MATRIX_ONE_COLUMNS_LENGTH 4
+#define MATRIX_TWO_LINES_LENGTH 4
+#define MATRIX_TWO_COLUMNS_LENGTH 4
 
 int aborta(char *error_msg){
     printf("%s", error_msg);
@@ -38,9 +38,8 @@ void writeMatrix(FILE *file){
 }
 
 void writeRandomMatrix(FILE *file){
-  int range = 100;
+  int range = 10;
   int min = 0;
-  srand(time(NULL));
   int random_number;
   int i, j;
   for(i = 0; i < MATRIX_ONE_LINES_LENGTH; i++){
@@ -54,15 +53,12 @@ void writeRandomMatrix(FILE *file){
 void generateNewMatrixFile(int random){
   //1: random matrix  0: not random
   printf("Generating new matrix file\n");
-  int range = 100;
-  int min = 0;
-  srand(time(NULL));
-  int random_number;
   FILE *fileONE, *fileTWO;
   fileONE = fopen("fileone.bin", "wb+");
   fileTWO = fopen("filetwo.bin", "wb+");
 
   if(random){
+    srand(time(NULL));
     writeRandomMatrix(fileONE);
     writeRandomMatrix(fileTWO);
   }else{
@@ -79,11 +75,14 @@ void* allocArray (int rows, int cols)
   return malloc( sizeof(int[rows][cols]) ); // allocate 1 2D-array
 }
 
-void readMatrixFile(int array[MATRIX_ONE_LINES_LENGTH][MATRIX_ONE_COLUMNS_LENGTH]){
-  printf("Reading matrix file\n");
-  FILE *fileONE;
+void readMatrixFiles(int array1[MATRIX_ONE_LINES_LENGTH][MATRIX_ONE_COLUMNS_LENGTH], 
+                     int array2[MATRIX_TWO_LINES_LENGTH][MATRIX_TWO_COLUMNS_LENGTH]){
+  printf("Reading matrix files\n");
+  FILE *fileONE, *fileTWO;
   fileONE = fopen("fileone.bin", "rb");
-  fread(array, sizeof(int[MATRIX_ONE_LINES_LENGTH][MATRIX_ONE_COLUMNS_LENGTH]), 1, fileONE);
+  fileTWO = fopen("filetwo.bin", "rb");
+  fread(array1, sizeof(int[MATRIX_ONE_LINES_LENGTH][MATRIX_ONE_COLUMNS_LENGTH]), 1, fileONE);
+  fread(array2, sizeof(int[MATRIX_TWO_LINES_LENGTH][MATRIX_TWO_COLUMNS_LENGTH]), 1, fileTWO);
 }
 
 void mostraMatriz(int rows, int cols, int matrix[rows][cols]){
@@ -94,6 +93,23 @@ void mostraMatriz(int rows, int cols, int matrix[rows][cols]){
     }
     printf("\n");
   }
+  printf("\n");
+}
+
+void* matrix_multiplier_sequential(int rowsA, int colsA, int matrixA[rowsA][colsA], int rowsB, int colsB, int matrixB[rowsB][colsB]){
+    int (*result)[MATRIX_ONE_COLUMNS_LENGTH] = malloc(sizeof(int[colsA][rowsB]));
+    
+    int i,j,k;
+    for (i=0; i<rowsA; i++){
+        for (j=0; j<colsB; j++){
+            result[i][j] = 0;
+            for (k=0; k<colsA; k++){
+                result[i][j] = result[i][j] + matrixA[i][k]*matrixB[k][j];
+            }
+        }
+    }
+    return result;
+    
 }
 
 int main(int argc, char *argv[])
@@ -122,12 +138,19 @@ int main(int argc, char *argv[])
         else if (strcmp(argv[i], "g+") == 0) generateNewMatrixFile(1);//random matrix
       }
       int (*firstMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = allocArray(MATRIX_ONE_LINES_LENGTH, MATRIX_ONE_COLUMNS_LENGTH);
-      readMatrixFile(firstMatrix);
-      mostraMatriz(MATRIX_ONE_LINES_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix);
+      int (*secondMatrix)[MATRIX_TWO_COLUMNS_LENGTH] = allocArray(MATRIX_TWO_LINES_LENGTH, MATRIX_TWO_COLUMNS_LENGTH);
 
+      readMatrixFiles(firstMatrix, secondMatrix);
+      printf("Matriz A:\n");
+      mostraMatriz(MATRIX_ONE_LINES_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix);
+      printf("Matriz B:\n");
+      mostraMatriz(MATRIX_TWO_LINES_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
+
+      int (*resultMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = matrix_multiplier_sequential(MATRIX_ONE_LINES_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix, MATRIX_TWO_LINES_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
+      printf("Matriz resultante:\n");
+      mostraMatriz(MATRIX_ONE_COLUMNS_LENGTH, MATRIX_TWO_LINES_LENGTH, resultMatrix);
       free(firstMatrix);
     }
-
   	//if (isSlave(comm_rank))
   	    //MPI_Recv(&data_recebida, particao, MPI_FLOAT, 0, 15, MPI_COMM_WORLD, &mpi_status);
 
