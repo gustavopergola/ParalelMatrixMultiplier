@@ -5,10 +5,10 @@
 #include <string.h>
 #include "mpi.h"
 
-#define MATRIX_ONE_LINES_LENGTH 4
-#define MATRIX_ONE_COLUMNS_LENGTH 4
-#define MATRIX_TWO_LINES_LENGTH 4
-#define MATRIX_TWO_COLUMNS_LENGTH 4
+#define MATRIX_ONE_ROWS_LENGTH 100
+#define MATRIX_ONE_COLUMNS_LENGTH 100
+#define MATRIX_TWO_ROWS_LENGTH 100
+#define MATRIX_TWO_COLUMNS_LENGTH 100
 
 int aborta(char *error_msg){
     printf("%s", error_msg);
@@ -25,25 +25,25 @@ bool isSlave(int rank){
 }
 
 bool matrizesNaoMultiplicaveis(){
-  return MATRIX_ONE_LINES_LENGTH != MATRIX_TWO_COLUMNS_LENGTH;
+  return MATRIX_ONE_COLUMNS_LENGTH != MATRIX_TWO_ROWS_LENGTH;
 }
 
-void writeMatrix(FILE *file){
+void writeMatrix(int rows, int cols, FILE *file){
   int i, j;
-  for(i = 0; i < MATRIX_ONE_LINES_LENGTH; i++){
-    for(j = 0; j < MATRIX_ONE_COLUMNS_LENGTH; j++){
+  for(i = 0; i < rows; i++){
+    for(j = 0; j < cols; j++){
       fwrite(&j, sizeof(int), 1,file);
     }
   }
 }
 
-void writeRandomMatrix(FILE *file){
+void writeRandomMatrix(int rows, int cols, FILE *file){
   int range = 10;
   int min = 0;
   int random_number;
   int i, j;
-  for(i = 0; i < MATRIX_ONE_LINES_LENGTH; i++){
-    for(j = 0; j < MATRIX_ONE_COLUMNS_LENGTH; j++){
+  for(i = 0; i < rows; i++){
+    for(j = 0; j < cols; j++){
       random_number = rand() % range + min;
       fwrite(&random_number, sizeof(int), 1, file);
     }
@@ -52,18 +52,18 @@ void writeRandomMatrix(FILE *file){
 
 void generateNewMatrixFile(int random){
   //1: random matrix  0: not random
-  printf("Generating new matrix file\n");
+  printf("Generating new matrix files\n");
   FILE *fileONE, *fileTWO;
   fileONE = fopen("fileone.bin", "wb+");
   fileTWO = fopen("filetwo.bin", "wb+");
 
   if(random){
     srand(time(NULL));
-    writeRandomMatrix(fileONE);
-    writeRandomMatrix(fileTWO);
+    writeRandomMatrix(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, fileONE);
+    writeRandomMatrix(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, fileTWO);
   }else{
-    writeMatrix(fileONE);
-    writeMatrix(fileTWO);
+    writeMatrix(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, fileONE);
+    writeMatrix(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, fileTWO);
   }
 
   fclose(fileONE);
@@ -75,20 +75,20 @@ void* allocArray (int rows, int cols)
   return malloc( sizeof(int[rows][cols]) ); // allocate 1 2D-array
 }
 
-void readMatrixFiles(int array1[MATRIX_ONE_LINES_LENGTH][MATRIX_ONE_COLUMNS_LENGTH], 
-                     int array2[MATRIX_TWO_LINES_LENGTH][MATRIX_TWO_COLUMNS_LENGTH]){
+void readMatrixFiles(int array1[MATRIX_ONE_ROWS_LENGTH][MATRIX_ONE_COLUMNS_LENGTH], 
+                     int array2[MATRIX_TWO_ROWS_LENGTH][MATRIX_TWO_COLUMNS_LENGTH]){
   printf("Reading matrix files\n");
   FILE *fileONE, *fileTWO;
   fileONE = fopen("fileone.bin", "rb");
   fileTWO = fopen("filetwo.bin", "rb");
-  fread(array1, sizeof(int[MATRIX_ONE_LINES_LENGTH][MATRIX_ONE_COLUMNS_LENGTH]), 1, fileONE);
-  fread(array2, sizeof(int[MATRIX_TWO_LINES_LENGTH][MATRIX_TWO_COLUMNS_LENGTH]), 1, fileTWO);
+  fread(array1, sizeof(int[MATRIX_ONE_ROWS_LENGTH][MATRIX_ONE_COLUMNS_LENGTH]), 1, fileONE);
+  fread(array2, sizeof(int[MATRIX_TWO_ROWS_LENGTH][MATRIX_TWO_COLUMNS_LENGTH]), 1, fileTWO);
 }
 
 void mostraMatriz(int rows, int cols, int matrix[rows][cols]){
   int i, j;
-  for(i = 0; i < MATRIX_ONE_LINES_LENGTH; i++){
-    for(j = 0; j < MATRIX_ONE_COLUMNS_LENGTH; j++){
+  for(i = 0; i < rows; i++){
+    for(j = 0; j < cols; j++){
       printf("%d ", matrix[i][j]);
     }
     printf("\n");
@@ -117,6 +117,8 @@ int main(int argc, char *argv[])
     MPI_Init (NULL, NULL);
     int comm_rank = 0;
     int comm_size = 0;
+    int method = 0;
+    double starttime = 0, endtime = 0;
 
     MPI_Comm_rank (MPI_COMM_WORLD, &comm_rank);
     MPI_Comm_size (MPI_COMM_WORLD, &comm_size);
@@ -128,27 +130,38 @@ int main(int argc, char *argv[])
       return aborta("Erro! número ímpar de tarefas.\n");
     }   
 
-    if(matrizesNaoMultiplicaveis()) return aborta("Matrizes não são multiplicáveis!\n");
-
     if (isMaster(comm_rank)){
       printf("Comm size = %d\n", comm_size);
       int i;
       for(i=1; i < argc; i++){
         if (strcmp(argv[i], "g") == 0) generateNewMatrixFile(0);
         else if (strcmp(argv[i], "g+") == 0) generateNewMatrixFile(1);//random matrix
+        else if (strcmp(argv[i], "1") == 0) method = 1;
+        else if (strcmp(argv[i], "2") == 0) method = 2;
       }
-      int (*firstMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = allocArray(MATRIX_ONE_LINES_LENGTH, MATRIX_ONE_COLUMNS_LENGTH);
-      int (*secondMatrix)[MATRIX_TWO_COLUMNS_LENGTH] = allocArray(MATRIX_TWO_LINES_LENGTH, MATRIX_TWO_COLUMNS_LENGTH);
+      if(matrizesNaoMultiplicaveis()) return aborta("Matrizes não são multiplicáveis!\n");
+      int (*firstMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = allocArray(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH);
+      int (*secondMatrix)[MATRIX_TWO_COLUMNS_LENGTH] = allocArray(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH);
 
       readMatrixFiles(firstMatrix, secondMatrix);
       printf("Matriz A:\n");
-      mostraMatriz(MATRIX_ONE_LINES_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix);
+      mostraMatriz(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix);
       printf("Matriz B:\n");
-      mostraMatriz(MATRIX_TWO_LINES_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
+      mostraMatriz(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
+      
+      starttime = MPI_Wtime();
+      int (*resultMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = matrix_multiplier_sequential(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix, MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
+      endtime = MPI_Wtime();
+      printf("Tempo decorrido para o método sequencial: %f\n", endtime-starttime);
 
-      int (*resultMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = matrix_multiplier_sequential(MATRIX_ONE_LINES_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix, MATRIX_TWO_LINES_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
       printf("Matriz resultante:\n");
-      mostraMatriz(MATRIX_ONE_COLUMNS_LENGTH, MATRIX_TWO_LINES_LENGTH, resultMatrix);
+      mostraMatriz(MATRIX_ONE_COLUMNS_LENGTH, MATRIX_TWO_ROWS_LENGTH, resultMatrix);
+      
+      if(method == 1){
+        //FIRST PARALLEL METHOD
+      }else if(method == 2){
+        //SECOND PARALLEL METHOD
+      }
       free(firstMatrix);
     }
   	//if (isSlave(comm_rank))
