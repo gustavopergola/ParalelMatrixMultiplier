@@ -1,0 +1,19 @@
+--> Exemplo testado e correto
+
+Matriz A:
+2 1 2 9
+7 6 6 3
+5 3 4 5
+5 6 1 2
+
+Matriz B:
+5 0 4 3
+4 2 4 1
+2 7 5 8
+9 9 9 3
+
+Matriz resultante:
+99 97 103 50
+98 81 109 84
+90 79 97 65
+69 37 67 35
