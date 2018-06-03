@@ -144,13 +144,14 @@ int main(int argc, char *argv[])
       int (*secondMatrix)[MATRIX_TWO_COLUMNS_LENGTH] = allocArray(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH);
 
       readMatrixFiles(firstMatrix, secondMatrix);
-      printf("Matriz A:\n");
+      printf("Matriz A:\n");MATRIX_ONE_COLUMNS_LENGTHMATRIX_ONE_COLUMNS_LENGTH
       mostraMatriz(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix);
       printf("Matriz B:\n");
-      mostraMatriz(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
+      mostraMatriz(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_C1OLUMNS_LENGTH, secondMatrix);
       
       starttime = MPI_Wtime();
       int (*resultMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = matrix_multiplier_sequential(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix, MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
+      free(resultMatrix);
       endtime = MPI_Wtime();
       printf("Tempo decorrido para o método sequencial: %f\n", endtime-starttime);
 
@@ -158,12 +159,21 @@ int main(int argc, char *argv[])
       mostraMatriz(MATRIX_ONE_COLUMNS_LENGTH, MATRIX_TWO_ROWS_LENGTH, resultMatrix);
       
       if(method == 1){
-        //FIRST PARALLEL METHOD
+        // distribui pedacos iguais da matriz para os pocessos
+        // todo: matriz não perfeitamente divisível
+        int chunk_columns = MATRIX_ONE_COLUMNS_LENGTH / comm_size;
+        int chunk_lines   = MATRIX_TWO_LINES_LENGTH / comm_size;
+        int i = 0;
+        for(i = 0; i < comm_size; i++){
+          MPI_send(firstMatrix[i], chunk_columns, );  
+        }
       }else if(method == 2){
-        //SECOND PARALLEL METHOD
+        
       }
       free(firstMatrix);
+      free(secondMatrix);
     }
+
   	//if (isSlave(comm_rank))
   	    //MPI_Recv(&data_recebida, particao, MPI_FLOAT, 0, 15, MPI_COMM_WORLD, &mpi_status);
 
