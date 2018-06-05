@@ -5,10 +5,10 @@
 #include <string.h>
 #include "mpi.h"
 
-#define MATRIX_ONE_ROWS_LENGTH 100
-#define MATRIX_ONE_COLUMNS_LENGTH 100
-#define MATRIX_TWO_ROWS_LENGTH 100
-#define MATRIX_TWO_COLUMNS_LENGTH 100
+#define MATRIX_ONE_ROWS_LENGTH 4
+#define MATRIX_ONE_COLUMNS_LENGTH 4
+#define MATRIX_TWO_ROWS_LENGTH 4
+#define MATRIX_TWO_COLUMNS_LENGTH 4
 
 int aborta(char *error_msg){
     printf("%s", error_msg);
@@ -89,11 +89,11 @@ void mostraMatriz(int rows, int cols, int matrix[rows][cols]){
   int i, j;
   for(i = 0; i < rows; i++){
     for(j = 0; j < cols; j++){
-      //printf("%d ", matrix[i][j]);
+      printf("%d ", matrix[i][j]);
     }
-    //printf("\n");
+    printf("\n");
   }
-  //printf("\n");
+  printf("\n");
 }
 
 void* matrix_multiplier_sequential(int rowsA, int colsA, int matrixA[rowsA][colsA], int rowsB, int colsB, int matrixB[rowsB][colsB]){
@@ -116,12 +116,12 @@ void calcula_matriz_resultante_sequencial(int (*firstMatrix)[MATRIX_ONE_COLUMNS_
     double starttime = 0, endtime = 0;
     starttime = MPI_Wtime();
     int (*resultMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = matrix_multiplier_sequential(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix, MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
-    free(resultMatrix);
     endtime = MPI_Wtime();
     //printf("Tempo decorrido para o método sequencial: %f\n", endtime-starttime);
 
-    //printf("Matriz resultante:\n");
+    printf("Matriz resultante:\n");
     mostraMatriz(MATRIX_ONE_COLUMNS_LENGTH, MATRIX_TWO_ROWS_LENGTH, resultMatrix);
+    free(resultMatrix);
 }
 
 
@@ -158,9 +158,9 @@ int main(int argc, char *argv[])
 		int (*secondMatrix)[MATRIX_TWO_COLUMNS_LENGTH] = allocArray(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH);
 		
 		readMatrixFiles(firstMatrix, secondMatrix);
-		//printf("Matriz A:\n");
+		printf("Matriz A:\n");
 		mostraMatriz(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix);
-		//printf("Matriz B:\n");
+		printf("Matriz B:\n");
 		mostraMatriz(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
 		
 		calcula_matriz_resultante_sequencial(firstMatrix, secondMatrix);
