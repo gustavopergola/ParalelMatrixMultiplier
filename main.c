@@ -77,7 +77,7 @@ void* allocArray (int rows, int cols)
 
 void readMatrixFiles(int array1[MATRIX_ONE_ROWS_LENGTH][MATRIX_ONE_COLUMNS_LENGTH], 
                      int array2[MATRIX_TWO_ROWS_LENGTH][MATRIX_TWO_COLUMNS_LENGTH]){
-  printf("Reading matrix files\n");
+  //printf("Reading matrix files\n");
   FILE *fileONE, *fileTWO;
   fileONE = fopen("fileone.bin", "rb");
   fileTWO = fopen("filetwo.bin", "rb");
@@ -89,11 +89,11 @@ void mostraMatriz(int rows, int cols, int matrix[rows][cols]){
   int i, j;
   for(i = 0; i < rows; i++){
     for(j = 0; j < cols; j++){
-      printf("%d ", matrix[i][j]);
+      //printf("%d ", matrix[i][j]);
     }
-    printf("\n");
+    //printf("\n");
   }
-  printf("\n");
+  //printf("\n");
 }
 
 void* matrix_multiplier_sequential(int rowsA, int colsA, int matrixA[rowsA][colsA], int rowsB, int colsB, int matrixB[rowsB][colsB]){
@@ -112,15 +112,15 @@ void* matrix_multiplier_sequential(int rowsA, int colsA, int matrixA[rowsA][cols
     
 }
 
-void calcula_matriz_resultante_sequencial(){
+void calcula_matriz_resultante_sequencial(int (*firstMatrix)[MATRIX_ONE_COLUMNS_LENGTH], int (*secondMatrix)[MATRIX_TWO_COLUMNS_LENGTH]){
     double starttime = 0, endtime = 0;
     starttime = MPI_Wtime();
     int (*resultMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = matrix_multiplier_sequential(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix, MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
     free(resultMatrix);
     endtime = MPI_Wtime();
-    printf("Tempo decorrido para o método sequencial: %f\n", endtime-starttime);
+    //printf("Tempo decorrido para o método sequencial: %f\n", endtime-starttime);
 
-    printf("Matriz resultante:\n");
+    //printf("Matriz resultante:\n");
     mostraMatriz(MATRIX_ONE_COLUMNS_LENGTH, MATRIX_TWO_ROWS_LENGTH, resultMatrix);
 }
 
@@ -139,67 +139,68 @@ int main(int argc, char *argv[])
   	MPI_Status mpi_status;
 
     if(comm_size % 2 != 0){
-      printf("%d\n", comm_size);
-      return aborta("Erro! número ímpar de tarefas.\n");
+		printf("%d\n", comm_size);
+		return aborta("Erro! número ímpar de tarefas.\n");
     }   
 
     if (isMaster(comm_rank)){
-      printf("Comm size = %d\n", comm_size);
-      method = 1; //todo: aceitar metodo por parametro
-      int i;
-      for(i=1; i < argc; i++){
-        if (strcmp(argv[i], "g") == 0) generateNewMatrixFile(0);
-        else if (strcmp(argv[i], "g+") == 0) generateNewMatrixFile(1); //random matrix
-        // else if (strcmp(argv[i], "1") == 0) method = 1;
-        // else if (strcmp(argv[i], "2") == 0) method = 2;
-      }
-      if(matrizesNaoMultiplicaveis()) return aborta("Matrizes não são multiplicáveis!\n");
-      int (*firstMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = allocArray(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH);
-      int (*secondMatrix)[MATRIX_TWO_COLUMNS_LENGTH] = allocArray(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH);
+		printf("Comm size = %d\n", comm_size);
+		method = 1; //todo: aceitar metodo por parametro
+		int i;
+		for(i=1; i < argc; i++){
+			if (strcmp(argv[i], "g") == 0) generateNewMatrixFile(0);
+			else if (strcmp(argv[i], "g+") == 0) generateNewMatrixFile(1); //random matrix
+			// else if (strcmp(argv[i], "1") == 0) method = 1;
+			// else if (strcmp(argv[i], "2") == 0) method = 2;
+		}
+		if(matrizesNaoMultiplicaveis()) return aborta("Matrizes não são multiplicáveis!\n");
+		int (*firstMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = allocArray(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH);
+		int (*secondMatrix)[MATRIX_TWO_COLUMNS_LENGTH] = allocArray(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH);
+		
+		readMatrixFiles(firstMatrix, secondMatrix);
+		//printf("Matriz A:\n");
+		mostraMatriz(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix);
+		//printf("Matriz B:\n");
+		mostraMatriz(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
+		
+		calcula_matriz_resultante_sequencial(firstMatrix, secondMatrix);
       
-      readMatrixFiles(firstMatrix, secondMatrix);
-      printf("Matriz A:\n");MATRIX_ONE_COLUMNS_LENGTHMATRIX_ONE_COLUMNS_LENGTH
-      mostraMatriz(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix);
-      printf("Matriz B:\n");
-      mostraMatriz(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_C1OLUMNS_LENGTH, secondMatrix);
-      
-      calcula_matriz_resultante_sequencial();
-      
-      if(method == 1){
-        // distribui pedacos iguais da matriz para os pocessos
-        // TODO: matriz não perfeitamente divisível
-        int chunk_columns = MATRIX_ONE_COLUMNS_LENGTH / comm_size;
-        int chunk_lines   = MATRIX_TWO_LINES_LENGTH / comm_size;        
-        int destination;
-        for(i = 0; i < comm_size - 1; i++){
-            // considerando 1 linha por thread inicialmente para simplicidade
-            // todo: enviar pedaços da matriz
-            destination = i + 1;
-            MPI_send(firstMatrix[i], MATRIX_ONE_COLUMNS_LENGTH, MPI_INT, destination, 1, MPI_COMM_WORLD);  
-        }
+		if(method == 1){
+			// distribui pedacos iguais da matriz para os pocessos
+			// TODO: matriz não perfeitamente divisível
+			int chunk_columns = MATRIX_ONE_COLUMNS_LENGTH / comm_size;
+			int chunk_lines   = MATRIX_TWO_ROWS_LENGTH / comm_size;        
+			int destination;
+			for(i = 0; i < comm_size - 1; i++){
+				// considerando 1 linha por thread inicialmente para simplicidade
+				// todo: enviar pedaços da matriz
+				destination = i + 1;
+				MPI_Send(firstMatrix[i], MATRIX_ONE_COLUMNS_LENGTH, MPI_INT, destination, 1, MPI_COMM_WORLD);  
+			}
 
-        //segunda_matriz_transposta();
+			//segunda_matriz_transposta();
 
-        for(i = 0; i < comm_size - 1; i++){
-            // considerando 1 linha por thread inicialmente para simplicidade
-            // todo: enviar pedaços da matriz
-            destination = i + 1;
-            MPI_send(secondMatrix[i], MATRIX_TWO_ROWS_LENGTH, MPI_INT, destination, 2, MPI_COMM_WORLD);  
-        }
+			for(i = 0; i < comm_size - 1; i++){
+				// considerando 1 linha por thread inicialmente para simplicidade
+				// todo: enviar pedaços da matriz
+				destination = i + 1;
+				MPI_Send(secondMatrix[i], MATRIX_TWO_ROWS_LENGTH, MPI_INT, destination, 2, MPI_COMM_WORLD);  
+			}
         
-      }else if(method == 2){
-        // todo: segundo metodo paralelo
-      }
-      free(firstMatrix);
-      free(secondMatrix);
+		}else if(method == 2){
+			// todo: segundo metodo paralelo
+		}
+		free(firstMatrix);
+		free(secondMatrix);
     }
 
   	if (isSlave(comm_rank)){
-        int[] primeira_matriz;
-        int[] segunda_matriz_transposta;
+        int primeira_matriz [MATRIX_ONE_COLUMNS_LENGTH];
+        int segunda_matriz_transposta [MATRIX_TWO_ROWS_LENGTH];
+
         MPI_Recv(&primeira_matriz,           MATRIX_ONE_COLUMNS_LENGTH, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
         MPI_Recv(&segunda_matriz_transposta, MATRIX_TWO_ROWS_LENGTH   , MPI_INT, 0, 2, MPI_COMM_WORLD, &mpi_status);
-        printf("Slave %d recebeu matriz!\n", comm_rank);
+        printf("Slave %d recebeu alguma coisa!\n", comm_rank);
     }
   	    
 
