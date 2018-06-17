@@ -55,9 +55,6 @@ void calcula_matriz_transposta (int linhas, int colunas, int matrixA[linhas][col
     for (i = 0; i < linhas; i++)
         for (j = 0; j < colunas; j++)
             matrixAT[j][i] = matrixA[i][j];
-
-
-
 }
 
 void generateNewMatrixFile(int random){
@@ -107,7 +104,7 @@ void mostraMatriz(int rows, int cols, int matrix[rows][cols]){
 }
 
 void* matrix_multiplier_sequential(int rowsA, int colsA, int matrixA[rowsA][colsA], int rowsB, int colsB, int matrixB[rowsB][colsB]){
-    int (*result)[M1_COLUMNS_LENGTH] = malloc(sizeof(int[colsA][rowsB]));
+    int (*result)[rowsB] = malloc(sizeof(int[colsA][rowsB]));
 
     int i,j,k;
     for (i=0; i<rowsA; i++){
@@ -129,10 +126,11 @@ void calcula_matriz_resultante_sequencial(int (*firstMatrix)[M1_COLUMNS_LENGTH],
     endtime = MPI_Wtime();
     //printf("Tempo decorrido para o método sequencial: %f\n", endtime-starttime);
 
-    printf("Matriz resultante (SEQUENCIAL):\n");
-    mostraMatriz(M1_COLUMNS_LENGTH, M2_ROWS_LENGTH, resultMatrix);
+    //printf("Matriz resultante (SEQUENCIAL):\n");
+    //mostraMatriz(M1_COLUMNS_LENGTH, M2_ROWS_LENGTH, resultMatrix);
     free(resultMatrix);
 }
+
 
 int main(int argc, char *argv[])
 {
@@ -227,11 +225,18 @@ int main(int argc, char *argv[])
         printf("Matriz B slave %d\n", comm_rank);
         mostraMatriz(segundo_chunk_linhas, M2_COLUMNS_LENGTH, segunda_matriz);
 
+        int (*matriz_resultante)[M2_COLUMNS_LENGTH] = matrix_multiplier_sequential(
+                primeiro_chunk_linhas,
+                M1_COLUMNS_LENGTH,
+                primeira_matriz,
+                segundo_chunk_linhas,
+                M2_COLUMNS_LENGTH,
+                segunda_matriz
+        );
 
-
-
+        printf("Matriz resultante slave %d\n", comm_rank);
+        mostraMatriz(primeiro_chunk_linhas, M2_COLUMNS_LENGTH, matriz_resultante);
     }
-
 
     MPI_Finalize ();
     return 0;
