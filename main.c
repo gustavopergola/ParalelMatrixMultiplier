@@ -5,10 +5,10 @@
 #include <string.h>
 #include "mpi.h"
 
-#define MATRIX_ONE_ROWS_LENGTH 6
-#define MATRIX_ONE_COLUMNS_LENGTH 6
-#define MATRIX_TWO_ROWS_LENGTH 6
-#define MATRIX_TWO_COLUMNS_LENGTH 6
+#define M1_ROWS_LENGTH 2
+#define M1_COLUMNS_LENGTH 2
+#define M2_ROWS_LENGTH 2
+#define M2_COLUMNS_LENGTH 2
 
 int aborta(char *error_msg){
     printf("%s", error_msg);
@@ -21,39 +21,39 @@ bool isMaster(int rank){
 }
 
 bool isSlave(int rank){
-  return !isMaster(rank);
+    return !isMaster(rank);
 }
 
 bool matrizesNaoMultiplicaveis(){
-  return MATRIX_ONE_COLUMNS_LENGTH != MATRIX_TWO_ROWS_LENGTH;
+    return M1_COLUMNS_LENGTH != M2_ROWS_LENGTH;
 }
 
 void writeMatrix(int rows, int cols, FILE *file){
-  int i, j;
-  for(i = 0; i < rows; i++){
-    for(j = 0; j < cols; j++){
-      fwrite(&j, sizeof(int), 1,file);
+    int i, j;
+    for(i = 0; i < rows; i++){
+        for(j = 0; j < cols; j++){
+            fwrite(&j, sizeof(int), 1,file);
+        }
     }
-  }
 }
 
 void writeRandomMatrix(int rows, int cols, FILE *file){
-  int range = 10;
-  int min = 0;
-  int random_number;
-  int i, j;
-  for(i = 0; i < rows; i++){
-    for(j = 0; j < cols; j++){
-      random_number = rand() % range + min;
-      fwrite(&random_number, sizeof(int), 1, file);
+    int range = 10;
+    int min = 0;
+    int random_number;
+    int i, j;
+    for(i = 0; i < rows; i++){
+        for(j = 0; j < cols; j++){
+            random_number = rand() % range + min;
+            fwrite(&random_number, sizeof(int), 1, file);
+        }
     }
-  }
 }
 
-void calcula_segunda_matriz_transposta (int matrixA[MATRIX_TWO_ROWS_LENGTH][MATRIX_TWO_COLUMNS_LENGTH], int matrixAT[MATRIX_TWO_COLUMNS_LENGTH][MATRIX_TWO_ROWS_LENGTH]) {
-  int i, j;
-    for (i = 0; i < MATRIX_TWO_ROWS_LENGTH; i++)
-        for (j = 0; j < MATRIX_TWO_COLUMNS_LENGTH; j++)
+void calcula_matriz_transposta (int linhas, int colunas, int matrixA[linhas][colunas], int matrixAT[colunas][linhas]) {
+    int i, j;
+    for (i = 0; i < linhas; i++)
+        for (j = 0; j < colunas; j++)
             matrixAT[j][i] = matrixA[i][j];
 
 
@@ -61,53 +61,53 @@ void calcula_segunda_matriz_transposta (int matrixA[MATRIX_TWO_ROWS_LENGTH][MATR
 }
 
 void generateNewMatrixFile(int random){
-  //1: random matrix  0: not random
-  printf("Generating new matrix files\n");
-  FILE *fileONE, *fileTWO;
-  fileONE = fopen("fileone.bin", "wb+");
-  fileTWO = fopen("filetwo.bin", "wb+");
+    //1: random matrix  0: not random
+    printf("Generating new matrix files\n");
+    FILE *fileONE, *fileTWO;
+    fileONE = fopen("fileone.bin", "wb+");
+    fileTWO = fopen("filetwo.bin", "wb+");
 
-  if(random){
-    srand(time(NULL));
-    writeRandomMatrix(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, fileONE);
-    writeRandomMatrix(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, fileTWO);
-  }else{
-    writeMatrix(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, fileONE);
-    writeMatrix(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, fileTWO);
-  }
+    if(random){
+        srand(time(NULL));
+        writeRandomMatrix(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH, fileONE);
+        writeRandomMatrix(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, fileTWO);
+    }else{
+        writeMatrix(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH, fileONE);
+        writeMatrix(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, fileTWO);
+    }
 
-  fclose(fileONE);
-  fclose(fileTWO);
+    fclose(fileONE);
+    fclose(fileTWO);
 }
 
 void* allocArray (int rows, int cols)
 {
-  return malloc( sizeof(int[rows][cols]) ); // allocate 1 2D-array
+    return malloc( sizeof(int[rows][cols]) ); // allocate 1 2D-array
 }
 
-void readMatrixFiles(int array1[MATRIX_ONE_ROWS_LENGTH][MATRIX_ONE_COLUMNS_LENGTH],
-                     int array2[MATRIX_TWO_ROWS_LENGTH][MATRIX_TWO_COLUMNS_LENGTH]){
-  //printf("Reading matrix files\n");
-  FILE *fileONE, *fileTWO;
-  fileONE = fopen("fileone.bin", "rb");
-  fileTWO = fopen("filetwo.bin", "rb");
-  fread(array1, sizeof(int[MATRIX_ONE_ROWS_LENGTH][MATRIX_ONE_COLUMNS_LENGTH]), 1, fileONE);
-  fread(array2, sizeof(int[MATRIX_TWO_ROWS_LENGTH][MATRIX_TWO_COLUMNS_LENGTH]), 1, fileTWO);
+void readMatrixFiles(int array1[M1_ROWS_LENGTH][M1_COLUMNS_LENGTH],
+                     int array2[M2_ROWS_LENGTH][M2_COLUMNS_LENGTH]){
+    //printf("Reading matrix files\n");
+    FILE *fileONE, *fileTWO;
+    fileONE = fopen("fileone.bin", "rb");
+    fileTWO = fopen("filetwo.bin", "rb");
+    fread(array1, sizeof(int[M1_ROWS_LENGTH][M1_COLUMNS_LENGTH]), 1, fileONE);
+    fread(array2, sizeof(int[M2_ROWS_LENGTH][M2_COLUMNS_LENGTH]), 1, fileTWO);
 }
 
 void mostraMatriz(int rows, int cols, int matrix[rows][cols]){
-  int i, j;
-  for(i = 0; i < rows; i++){
-    for(j = 0; j < cols; j++){
-      printf("%d ", matrix[i][j]);
+    int i, j;
+    for(i = 0; i < rows; i++){
+        for(j = 0; j < cols; j++){
+            printf("%d ", matrix[i][j]);
+        }
+        printf("\n");
     }
     printf("\n");
-  }
-  printf("\n");
 }
 
 void* matrix_multiplier_sequential(int rowsA, int colsA, int matrixA[rowsA][colsA], int rowsB, int colsB, int matrixB[rowsB][colsB]){
-    int (*result)[MATRIX_ONE_COLUMNS_LENGTH] = malloc(sizeof(int[colsA][rowsB]));
+    int (*result)[M1_COLUMNS_LENGTH] = malloc(sizeof(int[colsA][rowsB]));
 
     int i,j,k;
     for (i=0; i<rowsA; i++){
@@ -122,15 +122,15 @@ void* matrix_multiplier_sequential(int rowsA, int colsA, int matrixA[rowsA][cols
 
 }
 
-void calcula_matriz_resultante_sequencial(int (*firstMatrix)[MATRIX_ONE_COLUMNS_LENGTH], int (*secondMatrix)[MATRIX_TWO_COLUMNS_LENGTH]){
+void calcula_matriz_resultante_sequencial(int (*firstMatrix)[M1_COLUMNS_LENGTH], int (*secondMatrix)[M2_COLUMNS_LENGTH]){
     double starttime = 0, endtime = 0;
     starttime = MPI_Wtime();
-    int (*resultMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = matrix_multiplier_sequential(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix, MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
+    int (*resultMatrix)[M1_COLUMNS_LENGTH] = matrix_multiplier_sequential(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH, firstMatrix, M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, secondMatrix);
     endtime = MPI_Wtime();
     //printf("Tempo decorrido para o método sequencial: %f\n", endtime-starttime);
 
     printf("Matriz resultante (SEQUENCIAL):\n");
-    mostraMatriz(MATRIX_ONE_COLUMNS_LENGTH, MATRIX_TWO_ROWS_LENGTH, resultMatrix);
+    mostraMatriz(M1_COLUMNS_LENGTH, M2_ROWS_LENGTH, resultMatrix);
     free(resultMatrix);
 }
 
@@ -144,84 +144,92 @@ int main(int argc, char *argv[])
 
     MPI_Comm_rank (MPI_COMM_WORLD, &comm_rank);
     MPI_Comm_size (MPI_COMM_WORLD, &comm_size);
-  	MPI_Request isreq, irreq;
-  	MPI_Status mpi_status;
+    MPI_Request isreq, irreq;
+    MPI_Status mpi_status;
 
     if(comm_size % 2 != 0){
-		printf("%d\n", comm_size);
-		return aborta("Erro! número ímpar de tarefas.\n");
+        printf("%d\n", comm_size);
+        return aborta("Erro! número ímpar de tarefas.\n");
     }
 
-    //int chunk_columns = MATRIX_ONE_COLUMNS_LENGTH / (comm_size - 1);
-    int primeiro_chunk_linhas = MATRIX_ONE_ROWS_LENGTH   / (comm_size - 1);
-    int segundo_chunk_linhas = MATRIX_TWO_COLUMNS_LENGTH / (comm_size - 1);
+    //int chunk_columns = M1_COLUMNS_LENGTH / (comm_size - 1);
+    int primeiro_chunk_linhas = M1_ROWS_LENGTH   / (comm_size - 1);
+    int segundo_chunk_linhas = M2_COLUMNS_LENGTH / (comm_size - 1);
 
     if (isMaster(comm_rank)){
-		printf("Comm size = %d\n", comm_size);
-		method = 1; //todo: aceitar metodo por parametro
-		int i;
-		for(i=1; i < argc; i++){
-			if (strcmp(argv[i], "g") == 0) generateNewMatrixFile(0);
-			else if (strcmp(argv[i], "g+") == 0) generateNewMatrixFile(1); //random matrix
-			// else if (strcmp(argv[i], "1") == 0) method = 1;
-			// else if (strcmp(argv[i], "2") == 0) method = 2;
-		}
-		if(matrizesNaoMultiplicaveis()) return aborta("Matrizes não são multiplicáveis!\n");
-		int (*firstMatrix)[MATRIX_ONE_COLUMNS_LENGTH] = allocArray(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH);
-		int (*secondMatrix)[MATRIX_TWO_COLUMNS_LENGTH] = allocArray(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH);
-        int (*segunda_matriz_transposta)[MATRIX_TWO_ROWS_LENGTH] = allocArray(MATRIX_TWO_COLUMNS_LENGTH, MATRIX_TWO_ROWS_LENGTH);
+        printf("Comm size = %d\n", comm_size);
+        method = 1; //todo: aceitar metodo por parametro
+        int i;
+        for(i=1; i < argc; i++){
+            if (strcmp(argv[i], "g") == 0) generateNewMatrixFile(0);
+            else if (strcmp(argv[i], "g+") == 0) generateNewMatrixFile(1); //random matrix
+            // else if (strcmp(argv[i], "1") == 0) method = 1;
+            // else if (strcmp(argv[i], "2") == 0) method = 2;
+        }
+        if(matrizesNaoMultiplicaveis()) return aborta("Matrizes não são multiplicáveis!\n");
+        int (*firstMatrix)[M1_COLUMNS_LENGTH] = allocArray(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH);
+        int (*secondMatrix)[M2_COLUMNS_LENGTH] = allocArray(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH);
+        int (*segunda_matriz_transposta)[M2_ROWS_LENGTH] = allocArray(M2_COLUMNS_LENGTH, M2_ROWS_LENGTH);
 
-		readMatrixFiles(firstMatrix, secondMatrix);
+        readMatrixFiles(firstMatrix, secondMatrix);
 
-		calcula_segunda_matriz_transposta(secondMatrix, segunda_matriz_transposta);
+        calcula_matriz_transposta(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, secondMatrix, segunda_matriz_transposta);
 
-		printf("Matriz A:\n");
-		mostraMatriz(MATRIX_ONE_ROWS_LENGTH, MATRIX_ONE_COLUMNS_LENGTH, firstMatrix);
-		printf("Matriz B:\n");
-		mostraMatriz(MATRIX_TWO_ROWS_LENGTH, MATRIX_TWO_COLUMNS_LENGTH, secondMatrix);
+        printf("Matriz A:\n");
+        mostraMatriz(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH, firstMatrix);
+        printf("Matriz B:\n");
+        mostraMatriz(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, secondMatrix);
         printf("Matriz B transposta:\n");
-		mostraMatriz(MATRIX_TWO_COLUMNS_LENGTH, MATRIX_TWO_ROWS_LENGTH, segunda_matriz_transposta);
+        mostraMatriz(M2_COLUMNS_LENGTH, M2_ROWS_LENGTH, segunda_matriz_transposta);
 
-		calcula_matriz_resultante_sequencial(firstMatrix, secondMatrix);
+        calcula_matriz_resultante_sequencial(firstMatrix, secondMatrix);
 
-		if(method == 1){
-			// distribui pedacos iguais da matriz para os pocessos
-			// TODO: matriz não perfeitamente divisível
+        if(method == 1){
+            // distribui pedacos iguais da matriz para os pocessos
+            // TODO: matriz não perfeitamente divisível
 
-			int destination;
-			for(i = 0; i < comm_size - 1; i++){
-				// considerando 1 linha por thread inicialmente para simplicidade
-				// todo: enviar pedaços da matriz
-				destination = i + 1;
+            int destination;
+            for(i = 0; i < comm_size - 1; i++){
+                // considerando 1 linha por thread inicialmente para simplicidade
+                // todo: enviar pedaços da matriz
+                destination = i + 1;
 
-				MPI_Send(firstMatrix[(primeiro_chunk_linhas) * i], primeiro_chunk_linhas * MATRIX_ONE_COLUMNS_LENGTH, MPI_INT, destination, 1, MPI_COMM_WORLD);
-			}
+                MPI_Send(firstMatrix[(primeiro_chunk_linhas) * i], primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, destination, 1, MPI_COMM_WORLD);
+            }
 
-			for(i = 0; i < comm_size - 1; i++){
-				// considerando 1 linha por thread inicialmente para simplicidade
-				// todo: enviar pedaços da matriz
-				destination = i + 1;
-				MPI_Send(segunda_matriz_transposta[(segundo_chunk_linhas) * i], segundo_chunk_linhas * MATRIX_TWO_ROWS_LENGTH, MPI_INT, destination, 2, MPI_COMM_WORLD);
-			}
+            for(i = 0; i < comm_size - 1; i++){
+                // considerando 1 linha por thread inicialmente para simplicidade
+                // todo: enviar pedaços da matriz
+                destination = i + 1;
+                MPI_Send(segunda_matriz_transposta[(segundo_chunk_linhas) * i], segundo_chunk_linhas * M2_ROWS_LENGTH, MPI_INT, destination, 2, MPI_COMM_WORLD);
+            }
 
-		}else if(method == 2){
-			// todo: segundo metodo paralelo
-		}
+        }else if(method == 2){
+            // todo: segundo metodo paralelo
+        }
 
-		//todo: free matrix
+        //todo: free matrix
     }
 
-  	if (isSlave(comm_rank)){
-        int (*primeira_matriz)[MATRIX_ONE_COLUMNS_LENGTH] = allocArray(primeiro_chunk_linhas, MATRIX_ONE_COLUMNS_LENGTH);
-        int (*segunda_matriz_transposta)[MATRIX_TWO_ROWS_LENGTH] = allocArray(segundo_chunk_linhas, MATRIX_TWO_ROWS_LENGTH);
+    if (isSlave(comm_rank)){
+        int (*primeira_matriz)[M1_COLUMNS_LENGTH] = allocArray(primeiro_chunk_linhas, M1_COLUMNS_LENGTH);
+        int (*segunda_matriz_transposta)[M2_ROWS_LENGTH] = allocArray(segundo_chunk_linhas, M2_ROWS_LENGTH);
+        int (*segunda_matriz)[M2_COLUMNS_LENGTH] = allocArray(segundo_chunk_linhas, M2_COLUMNS_LENGTH);
 
-        MPI_Recv(primeira_matriz,           primeiro_chunk_linhas * MATRIX_ONE_COLUMNS_LENGTH, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
-        MPI_Recv(segunda_matriz_transposta, segundo_chunk_linhas * MATRIX_TWO_ROWS_LENGTH   , MPI_INT, 0, 2, MPI_COMM_WORLD, &mpi_status);
+        MPI_Recv(primeira_matriz,           primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
+        MPI_Recv(segunda_matriz_transposta, segundo_chunk_linhas * M2_ROWS_LENGTH   , MPI_INT, 0, 2, MPI_COMM_WORLD, &mpi_status);
 
-        printf("MAtriz A slave\n");
-		mostraMatriz(primeiro_chunk_linhas, MATRIX_ONE_COLUMNS_LENGTH, primeira_matriz);
-		printf("MAtriz B slave (transposta) %d\n", comm_rank);
-		mostraMatriz(segundo_chunk_linhas, MATRIX_TWO_ROWS_LENGTH, segunda_matriz_transposta);
+        calcula_matriz_transposta(M2_COLUMNS_LENGTH, M2_ROWS_LENGTH, segunda_matriz_transposta, segunda_matriz);
+
+        printf("Matriz A slave%d\n", comm_rank);
+        mostraMatriz(primeiro_chunk_linhas, M1_COLUMNS_LENGTH, primeira_matriz);
+
+        printf("Matriz B slave %d\n", comm_rank);
+        mostraMatriz(segundo_chunk_linhas, M2_COLUMNS_LENGTH, segunda_matriz);
+
+
+
+
     }
 
 
