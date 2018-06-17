@@ -1,10 +1,12 @@
 # Multiplicação Matrizes MPI
 
 ## Como utilizar
+  
   Use o parametro **'g'** para gerar uma nova matriz.<br/>
   Use o parametro **'g+'** para gerar novas matrizes com conteúdo randômico.
 
 ## Como instalar MPI
+   
     mkdir openmpi
     cd openmpi
     wget https://download.open-mpi.org/release/open-mpi/v3.1/openmpi-3.1.0.tar.gz
@@ -17,3 +19,8 @@
     Após isso adicione essa linha ao seu .bashrc e reinicie seu terminal:
     
     export PATH=$PATH:$HOME/openmpi/bin
+
+## Para rodar o programa
+
+    mpirun -np 2 -mca plm_rsh_no_tree_spawn 1 main.o
+    mpicc main.c -o main.o
