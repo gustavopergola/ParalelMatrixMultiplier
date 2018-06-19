@@ -5,10 +5,10 @@
 #include <string.h>
 #include "mpi.h"
 
-#define M1_ROWS_LENGTH 2
-#define M1_COLUMNS_LENGTH 2
-#define M2_ROWS_LENGTH 2
-#define M2_COLUMNS_LENGTH 2
+#define M1_ROWS_LENGTH 9
+#define M1_COLUMNS_LENGTH 9
+#define M2_ROWS_LENGTH 9
+#define M2_COLUMNS_LENGTH 9
 
 int aborta(char *error_msg){
     printf("%s", error_msg);
@@ -131,7 +131,6 @@ void calcula_matriz_resultante_sequencial(int (*firstMatrix)[M1_COLUMNS_LENGTH],
     free(resultMatrix);
 }
 
-
 int main(int argc, char *argv[])
 {
     MPI_Init (NULL, NULL);
@@ -174,12 +173,12 @@ int main(int argc, char *argv[])
 
         calcula_matriz_transposta(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, secondMatrix, segunda_matriz_transposta);
 
-//        printf("Matriz A:\n");
-//        mostraMatriz(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH, firstMatrix);
-//        printf("Matriz B:\n");
-//        mostraMatriz(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, secondMatrix);
-//        printf("Matriz B transposta:\n");
-//        mostraMatriz(M2_COLUMNS_LENGTH, M2_ROWS_LENGTH, segunda_matriz_transposta);
+        printf("Matriz A:\n");
+        mostraMatriz(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH, firstMatrix);
+        printf("Matriz B:\n");
+        mostraMatriz(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, secondMatrix);
+        //printf("Matriz B transposta:\n");
+        //mostraMatriz(M2_COLUMNS_LENGTH, M2_ROWS_LENGTH, segunda_matriz_transposta);
 
         calcula_matriz_resultante_sequencial(firstMatrix, secondMatrix);
 
@@ -200,10 +199,24 @@ int main(int argc, char *argv[])
                 // considerando 1 linha por thread inicialmente para simplicidade
                 // todo: enviar pedaços da matriz
                 destination = i + 1;
-                MPI_Send(segunda_matriz_transposta[(segundo_chunk_linhas) * i], segundo_chunk_linhas * M2_ROWS_LENGTH, MPI_INT, destination, 2, MPI_COMM_WORLD);
+                MPI_Send(secondMatrix, M2_COLUMNS_LENGTH * M2_ROWS_LENGTH, MPI_INT, destination, 2, MPI_COMM_WORLD);
             }
 
-            MPI_Recv(matriz_resultante, M1_ROWS_LENGTH * M2_COLUMNS_LENGTH, MPI_INT, 1, 3, MPI_COMM_WORLD, &mpi_status);
+            int (*resultado_parcial)[M2_COLUMNS_LENGTH] = allocArray(primeiro_chunk_linhas, M2_COLUMNS_LENGTH);
+
+            int quemEnviou, linhaAtualParcial;
+
+            for(i = 0; i < comm_size -1; i++){
+                quemEnviou = i + 1;
+                MPI_Recv(resultado_parcial, M1_ROWS_LENGTH * M2_COLUMNS_LENGTH, MPI_INT, quemEnviou, 3, MPI_COMM_WORLD, &mpi_status);
+                for(int lin= i * primeiro_chunk_linhas ; lin < (i+1)*primeiro_chunk_linhas ; lin++){
+                    for(int col=0; col < M2_COLUMNS_LENGTH; col++){ //copia linha da matriz resultado_parcial para matriz_resultante
+                        linhaAtualParcial = lin - (primeiro_chunk_linhas * i);
+                        matriz_resultante[lin][col] = resultado_parcial[linhaAtualParcial][col];
+                    }
+                }
+
+            }
 
             printf("Matriz Resultante master\n");
             mostraMatriz(M1_ROWS_LENGTH, M2_COLUMNS_LENGTH, matriz_resultante);
@@ -217,33 +230,23 @@ int main(int argc, char *argv[])
 
     if (isSlave(comm_rank)){
         int (*primeira_matriz)[M1_COLUMNS_LENGTH] = allocArray(primeiro_chunk_linhas, M1_COLUMNS_LENGTH);
-        int (*segunda_matriz_transposta)[M2_ROWS_LENGTH] = allocArray(segundo_chunk_linhas, M2_ROWS_LENGTH);
-        int (*segunda_matriz)[M2_COLUMNS_LENGTH] = allocArray(segundo_chunk_linhas, M2_COLUMNS_LENGTH);
+        int (*segunda_matriz)[M2_ROWS_LENGTH] = allocArray(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH);
 
-        MPI_Recv(primeira_matriz,          primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
-        MPI_Recv(segunda_matriz_transposta, segundo_chunk_linhas * M2_ROWS_LENGTH   , MPI_INT, 0, 2, MPI_COMM_WORLD, &mpi_status);
+        MPI_Recv(primeira_matriz, primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
+        MPI_Recv(segunda_matriz,  M2_COLUMNS_LENGTH * M2_ROWS_LENGTH   , MPI_INT, 0, 2, MPI_COMM_WORLD, &mpi_status);
 
-        calcula_matriz_transposta(M2_COLUMNS_LENGTH, M2_ROWS_LENGTH, segunda_matriz_transposta, segunda_matriz);
+        //printf("Matriz A slave%d\n", comm_rank);
+        //mostraMatriz(primeiro_chunk_linhas, M1_COLUMNS_LENGTH, primeira_matriz);
 
-//        printf("Matriz A slave%d\n", comm_rank);
-//        mostraMatriz(primeiro_chunk_linhas, M1_COLUMNS_LENGTH, primeira_matriz);
+        //printf("Matriz B slave %d\n", comm_rank);
+        //mostraMatriz(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, segunda_matriz);
 
-//        printf("Matriz B slave %d\n", comm_rank);
-//        mostraMatriz(segundo_chunk_linhas, M2_COLUMNS_LENGTH, segunda_matriz);
+        int (*resultado)[M2_COLUMNS_LENGTH] = matrix_multiplier_sequential(primeiro_chunk_linhas, M1_COLUMNS_LENGTH, primeira_matriz, M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, segunda_matriz);
 
-        int (*matriz_resultante)[M2_COLUMNS_LENGTH] = matrix_multiplier_sequential(
-                primeiro_chunk_linhas,
-                M1_COLUMNS_LENGTH,
-                primeira_matriz,
-                segundo_chunk_linhas,
-                M2_COLUMNS_LENGTH,
-                segunda_matriz
-        );
+        //printf("Resultado slave %d\n", comm_rank);
+        //mostraMatriz(primeiro_chunk_linhas, M2_COLUMNS_LENGTH, resultado);
 
-//        printf("Matriz resultante slave %d\n", comm_rank);
-//        mostraMatriz(primeiro_chunk_linhas, M2_COLUMNS_LENGTH, matriz_resultante);
-
-        MPI_Send(matriz_resultante[0], primeiro_chunk_linhas * M2_COLUMNS_LENGTH, MPI_INT, 0, 3, MPI_COMM_WORLD);
+        MPI_Send(resultado, primeiro_chunk_linhas * M2_COLUMNS_LENGTH, MPI_INT, 0, 3, MPI_COMM_WORLD);
     }
 
     MPI_Finalize ();
