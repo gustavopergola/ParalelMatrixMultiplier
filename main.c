@@ -5,10 +5,10 @@
 #include <string.h>
 #include "mpi.h"
 
-#define M1_ROWS_LENGTH 18
-#define M1_COLUMNS_LENGTH 18
-#define M2_ROWS_LENGTH 18
-#define M2_COLUMNS_LENGTH 18
+#define M1_ROWS_LENGTH 2
+#define M1_COLUMNS_LENGTH 2
+#define M2_ROWS_LENGTH 2
+#define M2_COLUMNS_LENGTH 2
 
 int aborta(char *error_msg){
     printf("%s", error_msg);
@@ -127,7 +127,7 @@ void calcula_matriz_resultante_sequencial(int (*firstMatrix)[M1_COLUMNS_LENGTH],
     printf("Tempo decorrido para o método sequencial: %f\n", endtime-starttime);
 
     printf("Matriz resultante (SEQUENCIAL):\n");
-    //mostraMatriz(M1_COLUMNS_LENGTH, M2_ROWS_LENGTH, resultMatrix);
+    mostraMatriz(M1_COLUMNS_LENGTH, M2_ROWS_LENGTH, resultMatrix);
     free(resultMatrix);
 }
 
@@ -174,10 +174,10 @@ int main(int argc, char *argv[])
 
         calcula_matriz_transposta(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, secondMatrix, segunda_matriz_transposta);
 
-        //printf("Matriz A:\n");
-        //mostraMatriz(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH, firstMatrix);
-        //printf("Matriz B:\n");
-        //mostraMatriz(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, secondMatrix);
+        printf("Matriz A:\n");
+        mostraMatriz(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH, firstMatrix);
+        printf("Matriz B:\n");
+        mostraMatriz(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, secondMatrix);
         //printf("Matriz B transposta:\n");
         //mostraMatriz(M2_COLUMNS_LENGTH, M2_ROWS_LENGTH, segunda_matriz_transposta);
 
@@ -188,11 +188,16 @@ int main(int argc, char *argv[])
             return 0;
         }
 
+        if(comm_size == 1){
+            printf("Não é possível utilizar os métodos paralelos com apenas uma thread\ntente utilizar 2 threads.\n");
+            MPI_Finalize ();
+            return 0;
+        }
 
-
-        if(method == 1){
+        if(method == 1 || method == 0){
             double starttime = 0, endtime = 0;
             starttime = MPI_Wtime();
+
 
             // distribui pedacos iguais da matriz para os pocessos
             // TODO: matriz não perfeitamente divisível
@@ -229,8 +234,8 @@ int main(int argc, char *argv[])
 
             }
 
-            //printf("Matriz Resultante master\n");
-            //mostraMatriz(M1_ROWS_LENGTH, M2_COLUMNS_LENGTH, matriz_resultante);
+            printf("Matriz Resultante pelo método 1\n");
+            mostraMatriz(M1_ROWS_LENGTH, M2_COLUMNS_LENGTH, matriz_resultante);
 
             endtime = MPI_Wtime();
             printf("Tempo decorrido para o método 1: %f\n", endtime-starttime);
