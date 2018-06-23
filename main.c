@@ -5,10 +5,10 @@
 #include <string.h>
 #include "mpi.h"
 
-#define M1_ROWS_LENGTH 2
-#define M1_COLUMNS_LENGTH 2
-#define M2_ROWS_LENGTH 2
-#define M2_COLUMNS_LENGTH 2
+#define M1_ROWS_LENGTH 4
+#define M1_COLUMNS_LENGTH 4
+#define M2_ROWS_LENGTH 4
+#define M2_COLUMNS_LENGTH 4
 
 int aborta(char *error_msg){
     printf("%s", error_msg);
@@ -104,7 +104,7 @@ void mostraMatriz(int rows, int cols, int matrix[rows][cols]){
 }
 
 void* matrix_multiplier_sequential(int rowsA, int colsA, int matrixA[rowsA][colsA], int rowsB, int colsB, int matrixB[rowsB][colsB]){
-    int (*result)[rowsB] = malloc(sizeof(int[colsA][rowsB]));
+    int (*result)[colsB] = malloc(sizeof(int[colsA][rowsB]));
 
     int i,j,k;
     for (i=0; i<rowsA; i++){
@@ -122,12 +122,12 @@ void* matrix_multiplier_sequential(int rowsA, int colsA, int matrixA[rowsA][cols
 void calcula_matriz_resultante_sequencial(int (*firstMatrix)[M1_COLUMNS_LENGTH], int (*secondMatrix)[M2_COLUMNS_LENGTH]){
     double starttime = 0, endtime = 0;
     starttime = MPI_Wtime();
-    int (*resultMatrix)[M1_COLUMNS_LENGTH] = matrix_multiplier_sequential(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH, firstMatrix, M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, secondMatrix);
+    int (*resultMatrix)[M2_COLUMNS_LENGTH] = matrix_multiplier_sequential(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH, firstMatrix, M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, secondMatrix);
     endtime = MPI_Wtime();
     printf("Tempo decorrido para o método sequencial: %f\n", endtime-starttime);
 
     printf("Matriz resultante (SEQUENCIAL):\n");
-    mostraMatriz(M1_COLUMNS_LENGTH, M2_ROWS_LENGTH, resultMatrix);
+    mostraMatriz(M1_ROWS_LENGTH, M2_COLUMNS_LENGTH, resultMatrix);
     free(resultMatrix);
 }
 
