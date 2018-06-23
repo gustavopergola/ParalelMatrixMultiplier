@@ -155,15 +155,15 @@ int main(int argc, char *argv[])
 
     if (isMaster(comm_rank)){
         printf("Comm size = %d\n", comm_size);
-        method = 1; //todo: aceitar metodo por parametro
         int i;
         for(i=1; i < argc; i++){
             if (strcmp(argv[i], "g") == 0) generateNewMatrixFile(0);
             else if (strcmp(argv[i], "g+") == 0) generateNewMatrixFile(1);
             else if (strcmp(argv[i], "s") == 0) sequencial = 1;//random matrix
-            // else if (strcmp(argv[i], "1") == 0) method = 1;
-            // else if (strcmp(argv[i], "2") == 0) method = 2;
+            else if (strcmp(argv[i], "m1") == 0){ printf("Executando método 1\n"); method = 1; }
+            else if (strcmp(argv[i], "m2") == 0){ printf("Executando método 2\n"); method = 2; }
         }
+
         if(matrizesNaoMultiplicaveis()) return aborta("Matrizes não são multiplicáveis!\n");
         int (*firstMatrix)[M1_COLUMNS_LENGTH] = allocArray(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH);
         int (*secondMatrix)[M2_COLUMNS_LENGTH] = allocArray(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH);
