@@ -24,8 +24,8 @@
 
 ## Para rodar o programa
 
-    mpicc main.c -o main.o
-    mpirun -np 2 -mca plm_rsh_no_tree_spawn 1 main.o
+    mpicc main.c -o main.o -lm
+    mpirun -np X -mca plm_rsh_no_tree_spawn 1 main.o
     
     OBS: -np X , onde X representa o número de processos a serem criados
     
