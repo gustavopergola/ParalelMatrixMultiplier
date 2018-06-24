@@ -199,17 +199,13 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            int destination;
-            for(i = 0; i < comm_size - 1; i++){
-                destination = i + 1;
+            int destination = 1;
+            for(i = 0; i < comm_size - 1; i++)
+                MPI_Send(matriz_a[(primeiro_chunk_linhas) * i], primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, destination++, 1, MPI_COMM_WORLD);
 
-                MPI_Send(matriz_a[(primeiro_chunk_linhas) * i], primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, destination, 1, MPI_COMM_WORLD);
-            }
-
-            for(i = 0; i < comm_size - 1; i++){
-                destination = i + 1;
-                MPI_Send(matriz_b, M2_COLUMNS_LENGTH * M2_ROWS_LENGTH, MPI_INT, destination, 2, MPI_COMM_WORLD);
-            }
+            destination = 1;
+            for(i = 0; i < comm_size - 1; i++)
+                MPI_Send(matriz_b, M2_COLUMNS_LENGTH * M2_ROWS_LENGTH, MPI_INT, destination++, 2, MPI_COMM_WORLD);
 
             int (*resultado_parcial)[M2_COLUMNS_LENGTH] = allocArray(primeiro_chunk_linhas, M2_COLUMNS_LENGTH);
 
@@ -228,6 +224,12 @@ int main(int argc, char *argv[])
             }
 
         }else if(method == 2){
+            // master envia chunk da matriz A
+            int destination;
+            for(i = 0; i < comm_size - 1; i++)
+                MPI_Send(matriz_a[(primeiro_chunk_linhas) * i], primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, destination++, 1, MPI_COMM_WORLD);
+
+
 
         }else {
             aborta("Método inválido!");
