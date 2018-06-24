@@ -4,11 +4,20 @@
 #include <stdbool.h>
 #include <string.h>
 #include "mpi.h"
+#include <math.h>
 
-#define M1_ROWS_LENGTH 6
-#define M1_COLUMNS_LENGTH 3
-#define M2_ROWS_LENGTH 3
+#define M1_ROWS_LENGTH 4
+#define M1_COLUMNS_LENGTH 4
+#define M2_ROWS_LENGTH 4
 #define M2_COLUMNS_LENGTH 4
+
+int comm_rank = 0;
+int comm_size = 0;
+int GridSize; // Size of virtual processor grid
+int GridCoords[2]; // Coordinates of current processor in grid
+MPI_Comm GridComm; // Grid communicator
+MPI_Comm ColComm; // Column communicator
+MPI_Comm RowComm; // Row communicator
 
 int aborta(char *error_msg){
     printf("%s", error_msg);
@@ -130,11 +139,50 @@ void calcula_matriz_resultante_sequencial(int (*firstMatrix)[M1_COLUMNS_LENGTH],
     free(resultMatrix);
 }
 
+void CreateGridCommunicators() {
+    int DimSize[2]; // Number of processes in each dimension of the grid
+    int Periodic[2]; // =1, if the grid dimension should be periodic
+    int Subdims[2]; // =1, if the grid dimension should be fixed
+    DimSize[0] = GridSize;
+    DimSize[1] = GridSize;
+    Periodic[0] = 0;
+    Periodic[1] = 0;
+    // Creation of the Cartesian communicator
+    MPI_Cart_create(MPI_COMM_WORLD, 2, DimSize, Periodic, 1, &GridComm);
+    // Determination of the cartesian coordinates for every process
+    MPI_Cart_coords(GridComm, comm_rank, 2, GridCoords);
+    // Creating communicators for rows
+    Subdims[0] = 0; // Dimensionality fixing
+    Subdims[1] = 1; // The presence of the given dimension in the subgrid
+    MPI_Cart_sub(GridComm, Subdims, &RowComm);
+    // Creating communicators for columns
+    Subdims[0] = 1;
+    Subdims[1] = 0;
+    MPI_Cart_sub(GridComm, Subdims, &ColComm);
+}
+
+void ProcessInitialization (int* &pAblock, int* &pBblock, int* &pCblock,
+    int* &pTemporaryAblock, int &Size, int &BlockSize) {
+    if (ProcRank == 0) {
+        if (Size%GridSize != 0) {
+            printf ("Size of matricies must be divisible by the grid size! \n");
+        }
+    }
+    MPI_Bcast(&Size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    BlockSize = Size/GridSize;
+    pAblock = new int [BlockSize*BlockSize];
+    pBblock = new int [BlockSize*BlockSize];
+    pCblock = new int [BlockSize*BlockSize];
+    pTemporaryAblock = new int [BlockSize*BlockSize];
+
+    for (int i=0; i<BlockSize*BlockSize; i++) {
+        pCblock[i] = 0;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     MPI_Init (NULL, NULL);
-    int comm_rank = 0;
-    int comm_size = 0;
     int method = 0;
     int sequencial = 0;
 
@@ -246,7 +294,30 @@ int main(int argc, char *argv[])
             printf("Tempo decorrido para o método 1: %f\n", endtime-starttime);
 
         }else if(method == 2){
-            // todo: segundo metodo paralelo
+            //fox method
+
+            int BlockSize; // Sizes of matrix blocks on current process
+            int *pAblock; // Initial block of matrix A on current process
+            int *pBblock; // Initial block of matrix B on current process
+            int *pCblock; // Block of result matrix C on current process
+            int *pMatrixAblock;
+            int Size = M1_ROWS_LENGTH; //all matrices will have the dimensions: Size x Size for this method
+
+            GridSize = sqrt((double)comm_size);
+            if (comm_size != GridSize*GridSize) {
+                if (comm_rank == 0) {
+                    printf ("Number of processes must be a perfect square \n");
+                }
+            }
+            else{
+                if (comm_rank == 0)
+                    printf("Parallel matrix multiplication program\n");
+                // Creating the cartesian grid, row and column communcators
+                CreateGridCommunicators();
+
+                ProcessInitialization(pAblock, pBblock, pCblock, pMatrixAblock, Size, BlockSize);
+            }
+
         }
 
         //todo: free matrix
