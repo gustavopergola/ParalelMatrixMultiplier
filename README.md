@@ -2,8 +2,10 @@
 
 ## Como utilizar
   
-  Use o parametro **'g'** para gerar uma nova matriz.<br/>
-  Use o parametro **'g+'** para gerar novas matrizes com conteúdo randômico.
+  Use o parâmetro **'g'** para gerar uma nova matriz.<br/>
+  Use o parâmetro **'g+'** para gerar novas matrizes com conteúdo randômico.<br/>
+  Use o parâmetro **s** para utilizar o método sequencial. *Utilize -np 1* </br>
+  Use o parâmetro **m1** para utilizar o método paralelo 1 (MPI).
 
 ## Como instalar MPI
    
@@ -22,5 +24,8 @@
 
 ## Para rodar o programa
 
-    mpirun -np 2 -mca plm_rsh_no_tree_spawn 1 main.o
     mpicc main.c -o main.o
+    mpirun -np 2 -mca plm_rsh_no_tree_spawn 1 main.o
+    
+    OBS: -np X , onde X representa o número de processos a serem criados
+    
