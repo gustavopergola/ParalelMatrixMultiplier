@@ -5,9 +5,9 @@
 #include <string.h>
 #include "mpi.h"
 
-#define M1_ROWS_LENGTH 4
-#define M1_COLUMNS_LENGTH 4
-#define M2_ROWS_LENGTH 4
+#define M1_ROWS_LENGTH 6
+#define M1_COLUMNS_LENGTH 3
+#define M2_ROWS_LENGTH 3
 #define M2_COLUMNS_LENGTH 4
 
 int aborta(char *error_msg){
@@ -104,19 +104,18 @@ void mostraMatriz(int rows, int cols, int matrix[rows][cols]){
 }
 
 void* matrix_multiplier_sequential(int rowsA, int colsA, int matrixA[rowsA][colsA], int rowsB, int colsB, int matrixB[rowsB][colsB]){
-    int (*result)[colsB] = malloc(sizeof(int[colsA][rowsB]));
+    int (*result)[colsB] = allocArray(M1_ROWS_LENGTH, M2_COLUMNS_LENGTH);
 
     int i,j,k;
     for (i=0; i<rowsA; i++){
         for (j=0; j<colsB; j++){
             result[i][j] = 0;
-            for (k=0; k<colsA; k++){
+            for (k=0; k<rowsB; k++){
                 result[i][j] = result[i][j] + matrixA[i][k]*matrixB[k][j];
             }
         }
     }
     return result;
-
 }
 
 void calcula_matriz_resultante_sequencial(int (*firstMatrix)[M1_COLUMNS_LENGTH], int (*secondMatrix)[M2_COLUMNS_LENGTH]){
@@ -168,7 +167,7 @@ int main(int argc, char *argv[])
         int (*firstMatrix)[M1_COLUMNS_LENGTH] = allocArray(M1_ROWS_LENGTH, M1_COLUMNS_LENGTH);
         int (*secondMatrix)[M2_COLUMNS_LENGTH] = allocArray(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH);
         int (*segunda_matriz_transposta)[M2_ROWS_LENGTH] = allocArray(M2_COLUMNS_LENGTH, M2_ROWS_LENGTH);
-        int (*matriz_resultante)[M2_COLUMNS_LENGTH] = malloc(sizeof(int[M1_ROWS_LENGTH][M2_COLUMNS_LENGTH]));
+        int (*matriz_resultante)[M2_COLUMNS_LENGTH] = allocArray(M1_ROWS_LENGTH, M2_COLUMNS_LENGTH);
 
         readMatrixFiles(firstMatrix, secondMatrix);
 
@@ -184,13 +183,13 @@ int main(int argc, char *argv[])
         if (sequencial == 1){
             calcula_matriz_resultante_sequencial(firstMatrix, secondMatrix);
             printf("calculo de matriz sequencial terminada!\n");
-            MPI_Finalize ();
+            MPI_Finalize();
             return 0;
         }
 
         if(comm_size == 1){
             printf("Não é possível utilizar os métodos paralelos com apenas uma thread\ntente utilizar 2 threads.\n");
-            MPI_Finalize ();
+            MPI_Finalize();
             return 0;
         }
 
@@ -198,6 +197,12 @@ int main(int argc, char *argv[])
             double starttime = 0, endtime = 0;
             starttime = MPI_Wtime();
 
+            if(M1_ROWS_LENGTH % (comm_size - 1) != 0){
+                printf("Número de threads inválido para o método 1\n");
+                printf("O número de linhas da primeira matriz deve ser divisível pelo número de threads - 1\n");
+                MPI_Abort(MPI_COMM_WORLD, 1);
+                return 0;
+            }
 
             // distribui pedacos iguais da matriz para os pocessos
             // TODO: matriz não perfeitamente divisível
@@ -224,7 +229,7 @@ int main(int argc, char *argv[])
 
             for(i = 0; i < comm_size -1; i++){
                 quemEnviou = i + 1;
-                MPI_Recv(resultado_parcial, M1_ROWS_LENGTH * M2_COLUMNS_LENGTH, MPI_INT, quemEnviou, 3, MPI_COMM_WORLD, &mpi_status);
+                MPI_Recv(resultado_parcial, primeiro_chunk_linhas * M2_COLUMNS_LENGTH, MPI_INT, quemEnviou, 3, MPI_COMM_WORLD, &mpi_status);
                 for(int lin= i * primeiro_chunk_linhas ; lin < (i+1)*primeiro_chunk_linhas ; lin++){
                     for(int col=0; col < M2_COLUMNS_LENGTH; col++){ //copia linha da matriz resultado_parcial para matriz_resultante
                         linhaAtualParcial = lin - (primeiro_chunk_linhas * i);
@@ -248,10 +253,10 @@ int main(int argc, char *argv[])
     }
 
     if (isSlave(comm_rank)){
-        int (*primeira_matriz)[M1_COLUMNS_LENGTH] = allocArray(primeiro_chunk_linhas, M1_COLUMNS_LENGTH);
-        int (*segunda_matriz)[M2_ROWS_LENGTH] = allocArray(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH);
+        int (*primeira_matriz)[M1_COLUMNS_LENGTH] = allocArray(M1_ROWS_LENGTH, primeiro_chunk_linhas);
+        int (*segunda_matriz)[M2_COLUMNS_LENGTH] = allocArray(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH);
 
-        MPI_Recv(primeira_matriz, primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
+        MPI_Recv(primeira_matriz, primeiro_chunk_linhas * M1_ROWS_LENGTH, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
         MPI_Recv(segunda_matriz,  M2_COLUMNS_LENGTH * M2_ROWS_LENGTH   , MPI_INT, 0, 2, MPI_COMM_WORLD, &mpi_status);
 
         //printf("Matriz A slave%d\n", comm_rank);
@@ -261,13 +266,12 @@ int main(int argc, char *argv[])
         //mostraMatriz(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, segunda_matriz);
 
         int (*resultado)[M2_COLUMNS_LENGTH] = matrix_multiplier_sequential(primeiro_chunk_linhas, M1_COLUMNS_LENGTH, primeira_matriz, M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, segunda_matriz);
-
         //printf("Resultado slave %d\n", comm_rank);
         //mostraMatriz(primeiro_chunk_linhas, M2_COLUMNS_LENGTH, resultado);
 
         MPI_Send(resultado, primeiro_chunk_linhas * M2_COLUMNS_LENGTH, MPI_INT, 0, 3, MPI_COMM_WORLD);
     }
 
-    MPI_Finalize ();
+    MPI_Finalize();
     return 0;
 }

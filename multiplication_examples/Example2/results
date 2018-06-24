@@ -1,0 +1,17 @@
+--> Exemplo testado e correto
+
+Matriz A: 4x2
+2 3 
+2 0 
+0 4 
+7 4 
+
+Matriz B: 2x3
+4 0 6 
+1 4 9 
+
+Matriz resultante:
+11 12 39 
+8 0 12 
+4 16 36 
+32 16 78 
