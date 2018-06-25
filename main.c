@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
             }
 
             for(i = 0; i < comm_size - 1; i)
-                MPI_Send(matriz_a[(primeiro_chunk_linhas) * i++], total_chunk_size_m1, MPI_INT, i, 1, MPI_COMM_WORLD);
+                MPI_Send(matriz_a[(primeiro_chunk_linhas) * i++], primeiro_chunk_linhas * M1_ROWS_LENGTH, MPI_INT, i, 1, MPI_COMM_WORLD);
 
             for(i = 0; i < comm_size - 1; i)
                 MPI_Send(matriz_b, M2_COLUMNS_LENGTH * M2_ROWS_LENGTH, MPI_INT, ++i, 2, MPI_COMM_WORLD);
