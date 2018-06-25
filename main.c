@@ -5,10 +5,12 @@
 #include <string.h>
 #include "mpi.h"
 
-#define M1_ROWS_LENGTH 6
-#define M1_COLUMNS_LENGTH 3
-#define M2_ROWS_LENGTH 3
+#define M1_ROWS_LENGTH 4
+#define M1_COLUMNS_LENGTH 6
+#define M2_ROWS_LENGTH 6
 #define M2_COLUMNS_LENGTH 4
+
+#define ROWS_CHUNK_M2 1
 
 int aborta(char *error_msg){
     printf("%s", error_msg);
@@ -17,7 +19,7 @@ int aborta(char *error_msg){
 }
 
 bool isMaster(int rank){
-    return rank == 0 ? true : false;
+    return rank == 0;
 }
 
 bool isSlave(int rank){
@@ -29,10 +31,11 @@ bool matrizesNaoMultiplicaveis(){
 }
 
 void writeMatrix(int rows, int cols, FILE *file){
-    int i, j;
+    int i, j, k;
     for(i = 0; i < rows; i++){
-        for(j = 0; j < cols; j++){
-            fwrite(&j, sizeof(int), 1,file);
+        for(j = 0; j < cols; j){
+            k = ++j;
+            fwrite(&k, sizeof(int), 1, file);
         }
     }
 }
@@ -96,6 +99,13 @@ void mostraMatriz(int rows, int cols, int matrix[rows][cols]){
     printf("\n");
 }
 
+void limpaMatriz(int rows, int cols, int matrix[rows][cols]){
+    int i, j;
+    for(i = 0; i < rows; i++)
+        for(j = 0; j < cols; j++)
+            matrix[i][j] = 0;
+}
+
 void* matrix_multiplier_sequential(int rowsA, int colsA, int matrixA[rowsA][colsA], int rowsB, int colsB, int matrixB[rowsB][colsB]){
     int (*result)[colsB] = allocArray(M1_ROWS_LENGTH, M2_COLUMNS_LENGTH);
 
@@ -131,7 +141,6 @@ int main(int argc, char *argv[])
     int method = 0;
     int sequencial = 0;
 
-
     MPI_Comm_rank (MPI_COMM_WORLD, &comm_rank);
     MPI_Comm_size (MPI_COMM_WORLD, &comm_size);
     MPI_Request isreq, irreq;
@@ -141,6 +150,9 @@ int main(int argc, char *argv[])
 
     if (comm_size > 1)
          primeiro_chunk_linhas = M1_ROWS_LENGTH   / (comm_size - 1);
+
+    int total_chunk_size_m1 = primeiro_chunk_linhas * M1_COLUMNS_LENGTH;
+    int total_chunk_size_mr = primeiro_chunk_linhas * M2_COLUMNS_LENGTH;
 
     int i;
     for(i=1; i < argc; i++)
@@ -196,13 +208,11 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            int destination = 1;
-            for(i = 0; i < comm_size - 1; i++)
-                MPI_Send(matriz_a[(primeiro_chunk_linhas) * i], primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, destination++, 1, MPI_COMM_WORLD);
+            for(i = 0; i < comm_size - 1; i)
+                MPI_Send(matriz_a[(primeiro_chunk_linhas) * i++], total_chunk_size_m1, MPI_INT, i, 1, MPI_COMM_WORLD);
 
-            destination = 1;
-            for(i = 0; i < comm_size - 1; i++)
-                MPI_Send(matriz_b, M2_COLUMNS_LENGTH * M2_ROWS_LENGTH, MPI_INT, destination++, 2, MPI_COMM_WORLD);
+            for(i = 0; i < comm_size - 1; i)
+                MPI_Send(matriz_b, M2_COLUMNS_LENGTH * M2_ROWS_LENGTH, MPI_INT, ++i, 2, MPI_COMM_WORLD);
 
             int (*resultado_parcial)[M2_COLUMNS_LENGTH] = allocArray(primeiro_chunk_linhas, M2_COLUMNS_LENGTH);
 
@@ -210,32 +220,45 @@ int main(int argc, char *argv[])
 
             for(i = 0; i < comm_size -1; i++){
                 quemEnviou = i + 1;
-                MPI_Recv(resultado_parcial, primeiro_chunk_linhas * M2_COLUMNS_LENGTH, MPI_INT, quemEnviou, 3, MPI_COMM_WORLD, &mpi_status);
-                for(int lin= i * primeiro_chunk_linhas ; lin < (i+1)*primeiro_chunk_linhas ; lin++){
+                MPI_Recv(resultado_parcial, total_chunk_size_mr, MPI_INT, quemEnviou, 3, MPI_COMM_WORLD, &mpi_status);
+                for(int lin= i * primeiro_chunk_linhas ; lin < (i+1) * primeiro_chunk_linhas ; lin++){
                     for(int col=0; col < M2_COLUMNS_LENGTH; col++){ //copia linha da matriz resultado_parcial para matriz_resultante
                         linhaAtualParcial = lin - (primeiro_chunk_linhas * i);
                         matriz_resultante[lin][col] = resultado_parcial[linhaAtualParcial][col];
                     }
                 }
-
             }
 
         }else if(method == 2){
-            // master envia chunk da matriz A
-            int destination = 1;
-            for(i = 0; i < comm_size - 1; i++)
-                MPI_Send(matriz_a[(primeiro_chunk_linhas) * i], primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, destination++, 1, MPI_COMM_WORLD);
+            if (M2_ROWS_LENGTH % ROWS_CHUNK_M2 > 0){
+                printf("ROWS_CHUNCK_M2 deve ser multiplo de M2_ROWS_LENGTH\n");
+                MPI_Finalize();
+                return 0;
+            }
+
+            // envia chunk matriz A para slaves
+            for(i = 0; i < comm_size - 1; i)
+                MPI_Send(matriz_a[(primeiro_chunk_linhas) * i++], total_chunk_size_m1, MPI_INT, i, 1, MPI_COMM_WORLD);
+
+            // distribui linhas da matriz B para slaves
+            for(i = 0; i < M2_ROWS_LENGTH / ROWS_CHUNK_M2; i++){
+                MPI_Bcast(matriz_b[ROWS_CHUNK_M2 * i], M2_COLUMNS_LENGTH * ROWS_CHUNK_M2, MPI_INT, 0, MPI_COMM_WORLD);
+                MPI_Barrier(MPI_COMM_WORLD);
+            }
+
+            // recebe resultados dos slaves
+            for(i = 0; i < comm_size - 1; i)
+                MPI_Recv(matriz_resultante[(primeiro_chunk_linhas * i++)], total_chunk_size_mr, MPI_INT, i, 3, MPI_COMM_WORLD, &mpi_status);
 
         }else {
             aborta("Método inválido!");
         }
 
-        //printf("Matriz Resultante pelo método %d\n", method);
-        //mostraMatriz(M1_ROWS_LENGTH, M2_COLUMNS_LENGTH, matriz_resultante);
+        printf("Matriz Resultante pelo método %d\n", method);
+        mostraMatriz(M1_ROWS_LENGTH, M2_COLUMNS_LENGTH, matriz_resultante);
 
         endtime = MPI_Wtime();
-        //printf("Tempo decorrido para o método %d: %f\n", method, endtime - starttime);
-
+        printf("Tempo decorrido para o método %d: %f\n", method, endtime - starttime);
         //todo: free matrix
     }
 
@@ -246,16 +269,36 @@ int main(int argc, char *argv[])
             int (*primeira_matriz)[M1_COLUMNS_LENGTH] = allocArray(M1_ROWS_LENGTH, primeiro_chunk_linhas);
             int (*segunda_matriz)[M2_COLUMNS_LENGTH] = allocArray(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH);
 
-            MPI_Recv(primeira_matriz, primeiro_chunk_linhas * M1_ROWS_LENGTH, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
+            MPI_Recv(primeira_matriz, total_chunk_size_m1, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
             MPI_Recv(segunda_matriz, M2_COLUMNS_LENGTH * M2_ROWS_LENGTH, MPI_INT, 0, 2, MPI_COMM_WORLD, &mpi_status);
             resultado = matrix_multiplier_sequential(primeiro_chunk_linhas, M1_COLUMNS_LENGTH, primeira_matriz, M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, segunda_matriz);
-            MPI_Send(resultado, primeiro_chunk_linhas * M2_COLUMNS_LENGTH, MPI_INT, 0, 3, MPI_COMM_WORLD);
+            MPI_Send(resultado, total_chunk_size_mr, MPI_INT, 0, 3, MPI_COMM_WORLD);
         }else if(method == 2){
-            int (*primeira_matriz)[primeiro_chunk_linhas] = allocArray(primeiro_chunk_linhas, M1_COLUMNS_LENGTH);
+            //todo: enviar pares de linhas ou chunks de linha da master pro slave ao invés de uma linha só
+            int (*m1_slave)[M1_COLUMNS_LENGTH] = allocArray(primeiro_chunk_linhas, M1_COLUMNS_LENGTH);
+            int (*m2_slave)[M2_COLUMNS_LENGTH] = allocArray(ROWS_CHUNK_M2, M2_COLUMNS_LENGTH);
+            int (*resultado_slave)[M2_COLUMNS_LENGTH] = allocArray(primeiro_chunk_linhas, M2_COLUMNS_LENGTH);
+            int j = 0, k = 0, l = 0;
 
-            MPI_Recv(primeira_matriz, primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
-            printf("MAtriz A slave %d\n", comm_rank);
-            mostraMatriz(primeiro_chunk_linhas, M1_COLUMNS_LENGTH, primeira_matriz);
+            limpaMatriz(primeiro_chunk_linhas, M2_COLUMNS_LENGTH, resultado_slave);
+            limpaMatriz(primeiro_chunk_linhas, M1_COLUMNS_LENGTH, m1_slave);
+
+            MPI_Recv(m1_slave, total_chunk_size_m1, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
+
+            for (k = 0; k < M2_ROWS_LENGTH / ROWS_CHUNK_M2; k++){
+                MPI_Bcast(m2_slave, ROWS_CHUNK_M2 * M2_COLUMNS_LENGTH, MPI_INT, 0, MPI_COMM_WORLD);
+                MPI_Barrier(MPI_COMM_WORLD);
+
+                for(l = 0; l < ROWS_CHUNK_M2; l++){
+                    for (i = 0; i < primeiro_chunk_linhas; i++){
+                        for (j = 0; j < M2_COLUMNS_LENGTH; j++){
+                            resultado_slave[i][j] += m1_slave[i][l + (k* ROWS_CHUNK_M2)] * m2_slave[l][j];
+                        }
+                    }
+                }
+            }
+
+            MPI_Send(resultado_slave[0], total_chunk_size_mr, MPI_INT, 0, 3, MPI_COMM_WORLD);
         }
     }
 
