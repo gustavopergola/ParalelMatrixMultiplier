@@ -6,6 +6,7 @@
   Use o parâmetro **'g+'** para gerar novas matrizes com conteúdo randômico.<br/>
   Use o parâmetro **s** para utilizar o método sequencial. *Utilize -np 1* </br>
   Use o parâmetro **m1** para utilizar o método paralelo 1 (MPI).
+  Use o parâmetro **m2** para utilizar o método paralelo 2 (MPI).
 
 ## Como instalar MPI
    
