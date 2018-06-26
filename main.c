@@ -75,7 +75,7 @@ void generateNewMatrixFile(int random){
 
 void* allocArray (int rows, int cols)
 {
-    return malloc( sizeof(int[rows][cols]) ); // allocate 1 2D-array
+    return malloc(sizeof(int[rows][cols]) ); // allocate 1 2D-array
 }
 
 void readMatrixFiles(int array1[M1_ROWS_LENGTH][M1_COLUMNS_LENGTH],
@@ -259,25 +259,31 @@ int main(int argc, char *argv[])
 
         endtime = MPI_Wtime();
         printf("Tempo decorrido para o método %d: %f\n", method, endtime - starttime);
-        //todo: free matrix
+
+        free(matriz_a);
+        free(matriz_b);
+        free(matriz_resultante);
     }
 
     if (isSlave(comm_rank)){
-        int (*resultado)[M2_COLUMNS_LENGTH];
+        int (*resultado_slave)[M2_COLUMNS_LENGTH];
+        int (*m1_slave)[M1_COLUMNS_LENGTH];
+        int (*m2_slave)[M2_COLUMNS_LENGTH];
 
         if (method == 1){
-            int (*primeira_matriz)[M1_COLUMNS_LENGTH] = allocArray(M1_ROWS_LENGTH, primeiro_chunk_linhas);
-            int (*segunda_matriz)[M2_COLUMNS_LENGTH] = allocArray(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH);
+            m1_slave= allocArray(M1_ROWS_LENGTH, primeiro_chunk_linhas);
+            m2_slave = allocArray(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH);
 
-            MPI_Recv(primeira_matriz, total_chunk_size_m1, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
-            MPI_Recv(segunda_matriz, M2_COLUMNS_LENGTH * M2_ROWS_LENGTH, MPI_INT, 0, 2, MPI_COMM_WORLD, &mpi_status);
-            resultado = matrix_multiplier_sequential(primeiro_chunk_linhas, M1_COLUMNS_LENGTH, primeira_matriz, M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, segunda_matriz);
-            MPI_Send(resultado, total_chunk_size_mr, MPI_INT, 0, 3, MPI_COMM_WORLD);
+            MPI_Recv(m1_slave, total_chunk_size_m1, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
+            MPI_Recv(m2_slave, M2_COLUMNS_LENGTH * M2_ROWS_LENGTH, MPI_INT, 0, 2, MPI_COMM_WORLD, &mpi_status);
+            resultado_slave = matrix_multiplier_sequential(primeiro_chunk_linhas, M1_COLUMNS_LENGTH, m1_slave, M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, m2_slave);
+            MPI_Send(resultado_slave, total_chunk_size_mr, MPI_INT, 0, 3, MPI_COMM_WORLD);
+
         }else if(method == 2){
             //todo: enviar pares de linhas ou chunks de linha da master pro slave ao invés de uma linha só
-            int (*m1_slave)[M1_COLUMNS_LENGTH] = allocArray(primeiro_chunk_linhas, M1_COLUMNS_LENGTH);
-            int (*m2_slave)[M2_COLUMNS_LENGTH] = allocArray(ROWS_CHUNK_M2, M2_COLUMNS_LENGTH);
-            int (*resultado_slave)[M2_COLUMNS_LENGTH] = allocArray(primeiro_chunk_linhas, M2_COLUMNS_LENGTH);
+            m1_slave= allocArray(primeiro_chunk_linhas, M1_COLUMNS_LENGTH);
+            m2_slave = allocArray(ROWS_CHUNK_M2, M2_COLUMNS_LENGTH);
+            resultado_slave = allocArray(primeiro_chunk_linhas, M2_COLUMNS_LENGTH);
             int j = 0, k = 0, l = 0;
 
             limpaMatriz(primeiro_chunk_linhas, M2_COLUMNS_LENGTH, resultado_slave);
@@ -300,8 +306,14 @@ int main(int argc, char *argv[])
 
             MPI_Send(resultado_slave[0], total_chunk_size_mr, MPI_INT, 0, 3, MPI_COMM_WORLD);
         }
-    }
 
+        if (method == 1 || method == 2){
+            free(m1_slave);
+            free(m2_slave);
+            free(resultado_slave);
+        }
+
+    }
     MPI_Finalize();
     return 0;
 }
