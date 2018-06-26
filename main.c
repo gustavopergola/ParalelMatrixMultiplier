@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
             }
 
             for(i = 0; i < comm_size - 1; i)
-                MPI_Send(matriz_a[(primeiro_chunk_linhas) * i++], primeiro_chunk_linhas * M1_ROWS_LENGTH, MPI_INT, i, 1, MPI_COMM_WORLD);
+                MPI_Send(matriz_a[(primeiro_chunk_linhas) * i++], primeiro_chunk_linhas * M1_COLUMNS_LENGTH, MPI_INT, i, 1, MPI_COMM_WORLD);
 
             for(i = 0; i < comm_size - 1; i)
                 MPI_Send(matriz_b, M2_COLUMNS_LENGTH * M2_ROWS_LENGTH, MPI_INT, ++i, 2, MPI_COMM_WORLD);
@@ -271,12 +271,14 @@ int main(int argc, char *argv[])
         int (*m2_slave)[M2_COLUMNS_LENGTH];
 
         if (method == 1){
-            m1_slave= allocArray(M1_ROWS_LENGTH, primeiro_chunk_linhas);
+            m1_slave= allocArray(primeiro_chunk_linhas, M1_COLUMNS_LENGTH);
             m2_slave = allocArray(M2_ROWS_LENGTH, M2_COLUMNS_LENGTH);
 
             MPI_Recv(m1_slave, total_chunk_size_m1, MPI_INT, 0, 1, MPI_COMM_WORLD, &mpi_status);
             MPI_Recv(m2_slave, M2_COLUMNS_LENGTH * M2_ROWS_LENGTH, MPI_INT, 0, 2, MPI_COMM_WORLD, &mpi_status);
+
             resultado_slave = matrix_multiplier_sequential(primeiro_chunk_linhas, M1_COLUMNS_LENGTH, m1_slave, M2_ROWS_LENGTH, M2_COLUMNS_LENGTH, m2_slave);
+
             MPI_Send(resultado_slave, total_chunk_size_mr, MPI_INT, 0, 3, MPI_COMM_WORLD);
 
         }else if(method == 2){
