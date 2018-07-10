@@ -10,7 +10,7 @@
 #define M2_ROWS_LENGTH 3600
 #define M2_COLUMNS_LENGTH 3600
 
-#define THREADS 3
+#define THREADS 2
 
 bool matrizesNaoMultiplicaveis(){
     return M1_COLUMNS_LENGTH != M2_ROWS_LENGTH;
@@ -124,9 +124,12 @@ void* matrix_multiplier_openmp_metodo1(int rowsA, int colsA, int matrixA[rowsA][
 
     int i,j,k;
     int (*result)[colsB] = allocArray(M1_ROWS_LENGTH, M2_COLUMNS_LENGTH);
+    omp_set_dynamic(0);
+    omp_set_num_threads(THREADS);
+
     #pragma omp parallel shared(matrixA,matrixB,result) private(i,j,k)
     {
-        #pragma omp for schedule(static) num_threads(THREADS)
+        #pragma omp for schedule(static)
         for (i=0; i<rowsA; i++){
             for (j=0; j<colsB; j++){
                 result[i][j] = 0;
